@@ -17,16 +17,34 @@ XX_EN_LANGUAGES = {
               "zh-CN"],
         "2": ["fr", "de", "es", "ca", "it", "ru", "zh-CN", "pt", "fa", "et",
               "mn", "nl", "tr", "ar", "sv-SE", "lv", "sl", "ta", "ja", "id",
-              "cy"]
+              "cy"],
+        "3": ["ar", "as", "az", "be", "bg", "bn", "br", "ca", "ckb", "cs", "cy", 
+              "da", "de", "dv", "el", "es", "et", "eu", "fa", "fi", "fr", "fy-NL", 
+              "ga-IE", "ha", "hi", "hu", "hy-AM", "id", "ig", "it", "ja", "ka", "kab", 
+              "kk", "ky", "lg", "lt", "lv", "mk", "ml", "mn", "mr", "mt", "ne-NP", 
+              "nl", "or", "pa-IN", "pl", "pt", "ro", "ru", "sk",  "sl", "sr", "sv-SE", 
+              "sw", "ta", "th", "tr", "tt", "uk", "ur", "uz", "vi", "yue", "zh-CN", "zh-HK", 
+              "zh-TW"]
 }
 EN_XX_LANGUAGES = {
         "1": [],
         "2": ["de", "tr", "fa", "sv-SE", "mn", "zh-CN", "cy", "ca", "sl", "et",
-              "id", "ar", "ta", "lv", "ja"]
+              "id", "ar", "ta", "lv", "ja"],
+        "3": ["ar", "as", "az", "be", "bg", "bn", "ca", "ckb", "cs", "cy", "da", 
+              "de", "el", "en-uk", "es", "et", "fa", "fi", "fr", "ha", "hi", "hu", 
+              "hy-AM", "id", "ig", "it", "ja", "ka", "kab", "kk", "ky", "lg", "lt", 
+              "lv", "mk", "ml", "mn", "mr", "mt", "ne-NP", "nl", "or", "pa-IN", "pl", 
+              "pt-BR", "ro", "ru", "rw", "sc", "sk", "sl", "sr", "sv-SE", "sw", "ta", 
+              "th", "ti", "tr", "tt", "tw", "ur", "uz", "vi", "yue", "zh-CN", "zh-TW"],
+}
+
+XX_XX_DIRECTIONS= {
+    "3" : ["de-tr", "hi-ta", "hu-ro", "it-sl", "ja-ru", "ka-uk", "lt-sv", "lv-ru", "mn-zh",
+           "mt-sl", "ro-hu", "ru-ja", "ru-lv", "sl-it", "sl-mt"],
 }
 
 SPLITS = ["train", "dev", "test"]
-TSV_PREFIX = {"1": "covost", "2": "covost_v2"}
+TSV_PREFIX = {"1": "covost", "2": "covost_v2", "3": "covost_v3"}
 
 
 def get_args():
@@ -64,16 +82,29 @@ def get_v2_split(df: pd.DataFrame, split: str):
     else:
         return df[df["split"] == split]
 
+def get_v3_split(df: pd.DataFrame, split: str):
+    return df[(df["split"] == split) | (df["split"] == f"{split}_covost")]
 
 def main():
     args = get_args()
 
     ver, src, tgt = args.version, args.src_lang, args.tgt_lang
-    assert src != tgt and "en" in {src, tgt}
-    if src == "en":
-        assert tgt in EN_XX_LANGUAGES[ver]
-    else:
-        assert src in XX_EN_LANGUAGES[ver]
+    assert src != tgt
+    if ver < 3: 
+        assert "en" in {src, tgt}
+        if src == "en":
+            assert tgt in EN_XX_LANGUAGES[ver]
+        else:
+            assert src in XX_EN_LANGUAGES[ver]
+    else: 
+        if "en" in {src, tgt}: 
+            if src == "en":
+                assert tgt in EN_XX_LANGUAGES[ver]
+            else:
+                assert src in XX_EN_LANGUAGES[ver]
+        else: 
+            assert src + "-" + tgt in XX_XX_DIRECTIONS[ver]
+            
 
     root = Path(args.root)
     tsv_prefix = TSV_PREFIX[ver]
@@ -87,7 +118,7 @@ def main():
         on="path",
     )
     for split in SPLITS:
-        get_split = {"1": get_v1_split, "2": get_v2_split}.get(ver, None)
+        get_split = {"1": get_v1_split, "2": get_v2_split, "3": get_v3_split}.get(ver, None)
         assert get_split is not None
         cur_df = get_split(df, split)
         cur_df = cur_df[["path", "sentence", "translation", "client_id"]]
